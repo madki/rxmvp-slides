@@ -1,50 +1,278 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+    <title>reveal.js</title>
 
-		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/black.css">
 
-		<!-- Theme used for syntax highlighting of code -->
-		<link rel="stylesheet" href="lib/css/zenburn.css">
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
 
-		<!-- Printing and PDF exports -->
-		<script>
-			var link = document.createElement( 'link' );
-			link.rel = 'stylesheet';
-			link.type = 'text/css';
-			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
-			document.getElementsByTagName( 'head' )[0].appendChild( link );
-		</script>
-	</head>
-	<body>
-		<div class="reveal">
-			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
-			</div>
-		</div>
+    <!-- Printing and PDF exports -->
+    <script>
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match(/print-pdf/gi) ? 'css/print/pdf.css' : 'css/print/paper.css';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section>
+            <b>RxMVP : RXJava + MVP</b>
+        </section>
+        <section>
+            <h2>Why MVP?</h2>
+            <ul>
+                <li>Easy for unit testing, no long running emulations</li>
+                <li>DRY code, can re-use same presenter for multiple views</li>
+                <li>Easy to iterate over multiple designs</li>
+                <li>State management, preserve network results over rotation</li>
+            </ul>
+        </section>
+        <section>
+            <h2>Why Rx?</h2>
+            <ul>
+                <li>Thread switching is a breeze</li>
+                <li>Code is readable and powerful</li>
+                <li>Uniformity in function return types (No CursorLoader vs AsyncLoader callbacks)</li>
+            </ul>
+        </section>
+        <section>
+            <h2>View</h2>
+            <ul>
+                <li>Is dumb, lifecycle decide by Android Framework</li>
+                <li>Delegates all user events to Presenter</li>
+                <li>Implements an interface decided by the Presenter</li>
+            </ul>
+        </section>
+        <section>
+            <h2>Presenter</h2>
+            <ul>
+                <li>Is a pure Java class, easy to unit test</li>
+                <li>Lifecycle is in our hands</li>
+                <li>Gets events from view and tells it what to do</li>
+            </ul>
+        </section>
+        <section>
+            <h2>Presenter</h2>
+            <pre>
+						<code data-trim>
+public abstract class BasePresenter&lt;V&gt; {
+	private V view;
 
-		<script src="lib/js/head.min.js"></script>
-		<script src="js/reveal.js"></script>
+	private final void takeView(V view) {
+		this.view = view;
+		onViewLoaded(view);
+	}
 
-		<script>
-			// More info https://github.com/hakimel/reveal.js#configuration
-			Reveal.initialize({
-				history: true,
+	private final void dropView(V view) {
+		onDropView(view);
+		this.view = null;
+	}
 
-				// More info https://github.com/hakimel/reveal.js#dependencies
-				dependencies: [
-					{ src: 'plugin/markdown/marked.js' },
-					{ src: 'plugin/markdown/markdown.js' },
-					{ src: 'plugin/notes/notes.js', async: true },
-					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
-				]
-			});
-		</script>
-	</body>
+	protected abstract void onViewLoaded();
+	protected abstract void onDropView();
+}
+						</code>
+					</pre>
+        </section>
+        <section>
+            <h2>View</h2>
+            <pre>
+						<code data-trim>
+public abstract class BaseActivity&lt;P extends BasePresenter&gt;
+					extends Activity {
+	private P presenter;
+
+	private final void onResume() {
+		// ...
+		presenter.takeView(this);
+	}
+
+	private final void onPause() {
+		// ...
+		presenter.dropView(this);
+	}
+}
+						</code>
+					</pre>
+        </section>
+        <section>
+            <h2>BMI Calculator</h2>
+            <ul>
+                <li>Get height and weight</li>
+                <li>Show BMI = weight / (height * height)</li>
+                <li>Tell whether someone is over weight or under weight</li>
+            </ul>
+        </section>
+        <section>
+            <video src="rxmvp.mp4" width="400" height="780" controls style="margin-top: -80px">
+                Go up
+            </video>
+        </section>
+        <section>
+            <h2>All user events are observables</h2>
+        </section>
+        <section>
+            <h2>View Interface</h2>
+            <pre><code data-trim>
+public class MainPresenter extends BasePresenter&lt;IView&gt; {
+  // ...
+  public interface IView {
+    Observable&lt;String&gt; height$();
+    Observable&lt;String&gt; weight$();
+    void setBMI(String bmiString);
+    void setMessage(String message);
+  }
+}
+            </code></pre>
+        </section>
+        <section>
+            <h2>Rx Bindings</h2>
+            <ul>
+                <li>A library that provides static methods to get various listener callbacks as Observables</li>
+                <li>Ex: <code>RxTextView.textChanges(editText) => Observable&lt;CharSequence&gt;</code></li>
+            </ul>
+        </section>
+        <section>
+            <h2>Activity</h2>
+            <pre><code data-trim>
+public class MainActivity extends BaseActivity implements MainPresenter.IView {
+  // ...
+  @Override
+  public Observable&lt;String&gt; height$() {
+    return RxTextView.textChanges(etHeight).map(CharSequence::toString);
+  }
+
+  @Override
+  public Observable&lt;String&gt; weight$() {
+    return RxTextView.textChanges(etWeight).map(CharSequence::toString);
+  }
+
+  @Override
+  public void setBMI(String bmiString) {
+    tvBMI.setText(bmiString);
+  }
+
+  @Override
+  public void setMessage(String message) {
+    tvMessage.setText(message);
+  }
+  // ...
+}
+            </code></pre>
+        </section>
+        <section>
+            <h2>Some actual code now</h2>
+        </section>
+        <section>
+            <pre><code data-trim>
+@Override
+protected void onViewLoaded(IView view) {
+  Observable&lt;String&gt; height$ = view.height$();
+  Observable&lt;String&gt; weight$ = view.weight$();
+
+  // convert to float
+  Observable&lt;Float&gt; heightFloat$ = height$.map(MainPresenter::stringToFloat);
+  Observable&lt;Float&gt; weightFloat$ = weight$.map(MainPresenter::stringToFloat);
+
+  // combine streams to get bmi
+  Observable&lt;Float&gt; bmiFloat$ = Observable.combineLatest(
+    heightFloat$, weightFloat$, MainPresenter::calculateBMI
+  );
+
+  // convert to String
+  Observable&lt;String&gt; bmiString$ = bmiFloat$.map(MainPresenter::bmiString);
+
+  // determine message based on BMI
+  Observable&lt;String&gt; message$ = bmiFloat$.map(MainPresenter::getMessageFromBMI);
+
+  addViewSubscriptions(
+    bmiString$.subscribe(view::setBMI),
+    message$.subscribe(view::setMessage)
+  );
+}
+            </code></pre>
+        </section>
+        <section>
+            <pre><code data-trim>
+@RunWith(MockitoJUnitRunner.class)
+public class MainPresenterTests {
+
+  @Mock MainPresenter.IView view;
+
+  @Test
+  public void bmiStringTest_validInputs() throws Exception {
+    PublishSubject&lt;String&gt; mockHeight$ = PublishSubject.create();
+    PublishSubject&lt;String&gt; mockWeight$ = PublishSubject.create();
+
+    MainPresenter presenter = new MainPresenter();
+    when(view.height$()).thenReturn(mockHeight$.asObservable());
+    when(view.weight$()).thenReturn(mockWeight$.asObservable());
+
+    presenter.takeView(view);
+
+    mockHeight$.onNext("400");
+    mockWeight$.onNext("16");
+
+    verify(view, times(1)).setBMI("BMI: 1.00");
+  }
+
+  @Test
+  public void calculateBMITest_validInputs() throws Exception {
+    assertEquals(Float.valueOf(1.0f), MainPresenter.calculateBMI(400f, 16f));
+  }
+}
+            </code></pre>
+        </section>
+        <section>
+            <h3>Key takeaways</h3>
+            <ul>
+                <li>All user actions as Observables, keep view dumb</li>
+                <li>Pure java presenter which is unit testable</li>
+                <li>RxBindings, Mockito, Retro lambda</li>
+                <li>Please have a look at Cyclejs by André Staltz</li>
+            </ul>
+        </section>
+        <section>
+            <h3>Thank you</h3>
+            <p>
+                <b>twitter.com/madkixyz</b>
+            </p>
+            <p>
+                <b>github.com/madki</b>
+            </p>
+        </section>
+    </div>
+</div>
+
+<script src="lib/js/head.min.js"></script>
+<script src="js/reveal.js"></script>
+
+<script>
+    // More info https://github.com/hakimel/reveal.js#configuration
+    Reveal.initialize({
+        history: true,
+
+        // More info https://github.com/hakimel/reveal.js#dependencies
+        dependencies: [
+            {src: 'plugin/markdown/marked.js'},
+            {src: 'plugin/markdown/markdown.js'},
+            {src: 'plugin/notes/notes.js', async: true},
+            {
+                src: 'plugin/highlight/highlight.js', async: true, callback: function () {
+                hljs.initHighlightingOnLoad();
+            }
+            }
+        ]
+    });
+</script>
+</body>
 </html>
